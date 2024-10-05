@@ -1,0 +1,29 @@
+---
+title: "Geology_Project"
+output: html_document
+date: "2024-09-24"
+---
+
+```{r setup, include=FALSE}
+map_plot <- read.csv("LatandLong.csv")
+map_plot
+map_plot <- na.omit(map_plot)
+map_plot
+```
+
+```{r 1, include=FALSE}
+install.packages("sf")
+```
+
+```{r 2, include=FALSE}
+library(sf)
+library(ggplot2)
+map_plot <- as.data.frame(map_plot)
+my_map <- st_as_sf(map_plot, coords = c('Longitude', 'Latitude'))
+
+
+#Plot it:
+
+ggplot(my_map) + 
+  geom_sf(aes(color = "green"))
+```
