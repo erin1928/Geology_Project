@@ -18,12 +18,16 @@ install.packages("sf")
 ```{r 2, include=FALSE}
 library(sf)
 library(ggplot2)
-map_plot <- as.data.frame(map_plot)
+
+# Assuming your map_plot data frame has columns 'Longitude', 'Latitude', and 'RockType'
 my_map <- st_as_sf(map_plot, coords = c('Longitude', 'Latitude'))
 
+# Plot it, coloring by RockType
+my_map <- ggplot(data = my_map) + 
+  geom_sf(aes(color = Measurement_Surface)) + 
+  theme_minimal() +
+  labs(x = "Longitude (degrees W)", y = "Latitude (degrees N)", color = "Rock Type") +
+  scale_color_manual(values = c("joint plane" = "red", "contact" = "blue", "bedding plane" = "green", "flow top" = "pink", "flow banding" = "orange", "flow foliation" = "black")) # Customize colors as needed
 
-#Plot it:
-
-ggplot(my_map) + 
-  geom_sf(aes(color = "green"))
+my_map
 ```
