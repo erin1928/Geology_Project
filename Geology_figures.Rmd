@@ -5,29 +5,153 @@ date: "2024-09-24"
 ---
 
 ```{r setup, include=FALSE}
-map_plot <- read.csv("LatandLong.csv")
-map_plot
-map_plot <- na.omit(map_plot)
-map_plot
+library("httr")
+library("readxl")
+GET("https://query.data.world/s/ty2qiubje2r6ayzs7te3ugzqa6ebrr?dws=00000", write_disk(tf <- tempfile(fileext = ".xlsx")))
+df <- read_excel(tf)
+head(df)
 ```
 
-```{r 1, include=FALSE}
-install.packages("sf")
+```{r, include=FALSE}
+tsunami <- as.factor(df$`Associated Tsunami?`)
+earthquake <- as.factor(df$`Associated Earthquake?`)
+explosivity <- as.numeric(df$`Volcano Explosivity Index (VEI)`)
 ```
 
-```{r 2, include=FALSE}
-library(sf)
+```{r, include=FALSE}
 library(ggplot2)
-
-# Assuming your map_plot data frame has columns 'Longitude', 'Latitude', and 'RockType'
-my_map <- st_as_sf(map_plot, coords = c('Longitude', 'Latitude'))
-
-# Plot it, coloring by RockType
-my_map <- ggplot(data = my_map) + 
-  geom_sf(aes(color = Measurement_Surface)) + 
+explosivity_plot <- ggplot(df, aes(x = earthquake, y = explosivity, fill = explosivity)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Values by Group",
+       x = "Group",
+       y = "Value") +
   theme_minimal() +
-  labs(x = "Longitude (degrees W)", y = "Latitude (degrees N)", color = "Rock Type") +
-  scale_color_manual(values = c("joint plane" = "red", "contact" = "blue", "bedding plane" = "green", "flow top" = "pink", "flow banding" = "orange", "flow foliation" = "black")) # Customize colors as needed
-
-my_map
+  scale_fill_brewer(palette = "Set3")
+explosivity_plot
 ```
+
+```{r, include=FALSE}
+# Install knitr if you haven't already
+install.packages("httr")
+install.packages("readxl")
+```
+
+```{r, include=FALSE}
+library(dplyr)
+
+eruption_volcano_earthquake_table <- df %>%
+  filter(!if_all(everything(), is.na)) %>%  # Remove rows where all columns are NA
+  group_by(`Associated Tsunami?`, `Associated Earthquake?`, `Volcano Explosivity Index (VEI)`) %>%
+  arrange(`Volcano Explosivity Index (VEI)`)%>%
+  select(`Associated Tsunami?`, `Associated Earthquake?`, `Volcano Explosivity Index (VEI)`)  
+# Print the table
+print(eruption_volcano_earthquake_table)
+```
+```{r, include=FALSE}
+library(ggplot2)
+library(dplyr)
+
+# Assuming your data frame is named df
+# Create the bar graph
+graph_1 <- ggplot(df %>% filter(!is.na(`Volcano Explosivity Index (VEI)`), 
+                     !is.na(`Associated Earthquake?`)), 
+       aes(x = `Volcano Explosivity Index (VEI)`, fill = `Associated Earthquake?`)) +
+  geom_bar(position = "dodge") +  # Use dodge to separate the bars by category
+  labs(
+    x = "Volcano Explosivity Index (VEI)",
+    y = "Count",
+    title = "Count of Associated Earthquakes by VEI"
+  ) +
+  theme_minimal()  # Optional: use a minimal theme
+
+graph_1
+```
+```{r, include=FALSE}
+library(ggplot2)
+library(dplyr)
+
+# Assuming your data frame is named df
+# Create the bar graph
+# Define your custom colors for each level
+custom_colors <- c("TSU" = "#66B3FF")  # Change these as needed
+
+graph_2 <- ggplot(df %>% filter(!is.na(`Volcano Explosivity Index (VEI)`), 
+                     !is.na(`Associated Tsunami?`)), 
+       aes(x = `Volcano Explosivity Index (VEI)`, fill = `Associated Tsunami?`)) +
+  geom_bar(position = "dodge") +  # Use dodge to separate the bars by category
+  labs(
+    x = "Volcano Explosivity Index (VEI)",
+    y = "Count",
+    title = "Count of Associated Tsunamis by VEI"
+  ) +
+  theme_minimal() +  # Optional: use a minimal theme
+  scale_fill_manual(values = custom_colors)  # Use custom colors  # Optional: use a minimal theme
+
+graph_2
+```
+```{r, include=FALSE}
+library(ggplot2)
+library(dplyr)
+
+# Create the bar graph while omitting NA values
+graph_3 <- ggplot(df %>% filter(!is.na(`Volcano Explosivity Index (VEI)`)), 
+       aes(x = `Volcano Explosivity Index (VEI)`, fill = `Associated Earthquake?`)) +
+  geom_bar(position = "dodge") +  # Use dodge to separate earthquake bars
+  facet_wrap(~ `Associated Tsunami?`, labeller = label_both) +  # Create separate panels for tsunami
+  labs(
+    x = "Volcano Explosivity Index (VEI)",
+    y = "Count",
+    title = "Earthquake and Tsunami Associations by VEI"
+  ) +
+  theme_minimal() +  # Optional: use a minimal theme
+  scale_fill_discrete(name = "Associated Earthquake?")
+graph_3
+```
+
+```{r, include=FALSE}
+library(dplyr)
+
+# Transform categorical variables and omit NAs
+df_transformed <- df %>%
+  mutate(
+    Associated_Tsunami = ifelse(`Associated Tsunami?` == "EQ", 1, 0),  # Yes = 1, No = 0
+    Associated_Earthquake = ifelse(`Associated Earthquake?` == "TSU", 1, 0)  # Yes = 1, No = 0
+  ) %>%
+  filter(!is.na(`Volcano Explosivity Index (VEI)`), 
+         !is.na(Associated_Tsunami), 
+         !is.na(Associated_Earthquake)) %>%  # Omit NAs
+  select(`Volcano Explosivity Index (VEI)`, Associated_Tsunami, Associated_Earthquake)  # Select relevant columns
+
+df_transformed
+```
+
+```{r, include=FALSE}
+library(ggplot2)
+library(reshape2)
+# Encode categorical variables
+df_encoded <- df %>%
+  mutate(
+    Associated_Tsunami = ifelse(`Associated Tsunami?` == "Yes", 1, 0),
+    Associated_Earthquake = ifelse(`Associated Earthquake?` == "Yes", 1, 0)
+  ) %>%
+  select(`Volcano Explosivity Index (VEI)`, Associated_Tsunami, Associated_Earthquake)  # Select relevant columns
+# Compute the correlation matrix
+correlation_matrix <- cor(df_encoded, use = "complete.obs")
+
+# Print the correlation matrix
+print(correlation_matrix)
+
+# Melt the correlation matrix for ggplot
+correlation_melted <- melt(correlation_matrix)
+
+# Create a heatmap
+graph_3 <- ggplot(correlation_melted, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, limit = c(-1, 1)) +
+  labs(title = "Correlation Matrix", x = "", y = "") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+graph_3
+```
+
