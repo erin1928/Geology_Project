@@ -29,6 +29,17 @@ explosivity_plot <- ggplot(df, aes(x = earthquake, y = explosivity, fill = explo
   scale_fill_brewer(palette = "Set3")
 explosivity_plot
 ```
+```{r, include=FALSE}
+library(ggplot2)
+explosivity_plot <- ggplot(df, aes(x = earthquake, y = explosivity, fill = explosivity)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Values by Group",
+       x = "Group",
+       y = "Value") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3")
+explosivity_plot
+```
 
 ```{r, include=FALSE}
 # Install knitr if you haven't already
@@ -47,25 +58,35 @@ eruption_volcano_earthquake_table <- df %>%
 # Print the table
 print(eruption_volcano_earthquake_table)
 ```
+
 ```{r, include=FALSE}
 library(ggplot2)
 library(dplyr)
 
-# Assuming your data frame is named df
-# Create the bar graph
-graph_1 <- ggplot(df %>% filter(!is.na(`Volcano Explosivity Index (VEI)`), 
-                     !is.na(`Associated Earthquake?`)), 
-       aes(x = `Volcano Explosivity Index (VEI)`, fill = `Associated Earthquake?`)) +
-  geom_bar(position = "dodge") +  # Use dodge to separate the bars by category
+# Create the bar graph with counts
+graph_1 <- ggplot(df %>% 
+                     filter(!is.na(`Volcano Explosivity Index (VEI)`), 
+                            !is.na(`Associated Earthquake?`)), 
+                   aes(x = `Volcano Explosivity Index (VEI)`, fill = `Associated Earthquake?`)) +
+  geom_bar(position = "dodge", width = 0.7) +  # Create the bar graph
   labs(
     x = "Volcano Explosivity Index (VEI)",
     y = "Count",
     title = "Count of Associated Earthquakes by VEI"
   ) +
-  theme_minimal()  # Optional: use a minimal theme
+  theme_minimal() +  # Optional: use a minimal theme
+  scale_fill_manual(values = c("Yes" = "blue", "No" = "red"), 
+                    name = "Associated Earthquake") +  # Custom colors
+  geom_text(stat = "count", aes(label = ..count..), 
+            position = position_dodge(width = 0.7), 
+            vjust = -0.5)  # Adjust position of text labels
 
-graph_1
+# Print the graph
+print(graph_1)
+
 ```
+
+
 ```{r, include=FALSE}
 library(ggplot2)
 library(dplyr)
@@ -85,10 +106,16 @@ graph_2 <- ggplot(df %>% filter(!is.na(`Volcano Explosivity Index (VEI)`),
     title = "Count of Associated Tsunamis by VEI"
   ) +
   theme_minimal() +  # Optional: use a minimal theme
-  scale_fill_manual(values = custom_colors)  # Use custom colors  # Optional: use a minimal theme
+  scale_fill_manual(values = custom_colors) +  # Use custom colors  # Optional: use a minimal theme
+geom_text(stat = "count", aes(label = ..count..), 
+            position = position_dodge(width = 0.7), 
+            vjust = -0.5)  # Adjust position of text labels
 
 graph_2
 ```
+```{r, include=FALSE}
+```
+
 ```{r, include=FALSE}
 library(ggplot2)
 library(dplyr)
@@ -110,16 +137,16 @@ graph_3
 
 ```{r, include=FALSE}
 library(dplyr)
+library(tidyr)
 
 # Transform categorical variables and omit NAs
 df_transformed <- df %>%
   mutate(
-    Associated_Tsunami = ifelse(`Associated Tsunami?` == "EQ", 1, 0),  # Yes = 1, No = 0
-    Associated_Earthquake = ifelse(`Associated Earthquake?` == "TSU", 1, 0)  # Yes = 1, No = 0
+    `Associated Tsunami?` = replace_na(`Associated Tsunami?`, "No"),
+    `Associated Earthquake?` = replace_na(`Associated Earthquake?`, "No"),
+    Associated_Tsunami = ifelse(`Associated Tsunami?` == "TSU", 1, 0),  # Yes = 1, No = 0
+    Associated_Earthquake = ifelse(`Associated Earthquake?` == "EQ", 1, 0)  # Yes = 1, No = 0
   ) %>%
-  filter(!is.na(`Volcano Explosivity Index (VEI)`), 
-         !is.na(Associated_Tsunami), 
-         !is.na(Associated_Earthquake)) %>%  # Omit NAs
   select(`Volcano Explosivity Index (VEI)`, Associated_Tsunami, Associated_Earthquake)  # Select relevant columns
 
 df_transformed
@@ -131,8 +158,8 @@ library(reshape2)
 # Encode categorical variables
 df_encoded <- df %>%
   mutate(
-    Associated_Tsunami = ifelse(`Associated Tsunami?` == "Yes", 1, 0),
-    Associated_Earthquake = ifelse(`Associated Earthquake?` == "Yes", 1, 0)
+    Associated_Tsunami = ifelse(`Associated Tsunami?` == "TSU", 1, 0),
+    Associated_Earthquake = ifelse(`Associated Earthquake?` == "EQ", 1, 0)
   ) %>%
   select(`Volcano Explosivity Index (VEI)`, Associated_Tsunami, Associated_Earthquake)  # Select relevant columns
 # Compute the correlation matrix
@@ -154,4 +181,68 @@ graph_3 <- ggplot(correlation_melted, aes(Var1, Var2, fill = value)) +
 
 graph_3
 ```
+```{r, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(reshape2)  # Load reshape2 for melt()
 
+# Assuming df_transformed already has the encoded variables
+# Compute the correlation matrix
+correlation_matrix <- cor(df_transformed, use = "complete.obs")
+
+# Print the correlation matrix
+print(correlation_matrix)
+
+# Melt the correlation matrix for ggplot
+correlation_melted <- melt(correlation_matrix)
+
+# Create a heatmap
+graph_3 <- ggplot(correlation_melted, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#1976D2", mid = "white", high = "#D32F2F", midpoint = 0, limit = c(-1, 1)) +  # Darker red
+  labs(title = "Correlation Matrix", x = "", y = "") +
+  labs(title = "Correlation Matrix", x = "", y = "") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+graph_3
+```
+
+```{r, include=FALSE}
+# Load necessary library
+library(dplyr)
+
+data(df_transformed)
+
+# Perform a correlation test between mpg and hp
+cor_test_result <- cor.test(df_transformed$`Volcano Explosivity Index (VEI)`, df_transformed$Associated_Earthquake)
+
+# Print the results
+print(cor_test_result)
+```
+
+```{r, include=FALSE}
+# Load necessary library
+library(dplyr)
+
+data(df_transformed)
+
+# Perform a correlation test between mpg and hp
+cor_test_result <- cor.test(df_transformed$`Volcano Explosivity Index (VEI)`, df_transformed$Associated_Tsunami)
+
+# Print the results
+print(cor_test_result)
+```
+
+```{r, include=FALSE}
+# Load necessary library
+library(dplyr)
+
+data(df_transformed)
+
+# Perform a correlation test between mpg and hp
+cor_test_result <- cor.test(df_transformed$Associated_Earthquake, df_transformed$Associated_Tsunami)
+
+# Print the results
+print(cor_test_result)
+```
